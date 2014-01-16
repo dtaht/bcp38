@@ -1,0 +1,64 @@
+#!/bin/sh
+
+ipset destroy egress-ipv4
+ipset destroy egress-ipv6
+
+ipset create bcp38-ipv4 hash:net family inet timeout 0 hashsize 32
+ipset add bcp38-ipv4 127.0.0.0/8
+ipset add bcp38-ipv4 192.168.0.0/16
+ipset add bcp38-ipv4 10.0.0.0/8
+ipset add bcp38-ipv4 172.16.0.0/12
+ipset add bcp38-ipv4 0.0.0.0/8	     # RFC 1700
+ipset add bcp38-ipv4 240.0.0.0/4     # RFC 5745
+ipset add bcp38-ipv4 192.0.2.0/24    # RFC 5737
+ipset add bcp38-ipv4 198.51.100.0/24 # RFC 5737
+ipset add bcp38-ipv4 203.0.113.0/24  # RFC 5737
+
+# What should bcp38 look like for ipv6?
+
+ipset create bcp38-ipv6 hash:net family inet6 timeout 0 hashsize 32
+ipset add bcp38-ipv6 2001:DB8::/32 # example ipv6 addr kill
+ipset add bcp38-ipv6 fc00::/7  # reject ula
+ipset add bcp38-ipv6 ff00::/8  # reject multicast
+ipset add bcp38-ipv6 fec0::/10 # reject site-local
+ipset add bcp38-ipv6 ::ffff/96 # reject v6mapped
+ipset add bcp38-ipv6 2001:10::/28 # Reject orchid (RFC 4843)
+ipset add bcp38-ipv6 3ffe::/16 # 6bone is dead
+ 
+ipset create egress-ipv4 hash:net family inet timeout 0 hashsize 32
+ipset add egress-ipv4 127.0.0.0/8
+ipset add egress-ipv4 192.168.0.0/16
+ipset add egress-ipv4 10.0.0.0/8
+ipset add egress-ipv4 172.16.0.0/12
+ipset add egress-ipv4 169.254.0.0/16
+
+# you could then dynamically add your external ip even
+# in a double nat situation in a dhcpd callback
+
+
+# Prohibit multicast?
+
+ipset create egress-ipv6 hash:net family inet6 timeout 0 hashsize 32
+ipset add egress-ipv6 2001:DB8::/32 # Block IPv6 example address
+ipset add egress-ipv6 fc00::/7
+ipset add egress-ipv6 ff00::/8
+ipset add egress-ipv6 fec0::/10 # reject site-local
+ipset add egress-ipv6 ::ffff/96 # reject v6mapped
+ipset add bcp38-ipv6 2001:10::/28 # Reject orchid (RFC 4843)
+ipset add bcp38-ipv6 3ffe::/16 # 6bone is dead
+
+# FIXME punch hole for network discovery?
+# FIXME punch a hole for dhcpv6
+# punch a hole for babel
+# ipset add egress-ipv6 ff00::/8
+
+# Be chatty to misbehaving internal hosts
+
+iptables -I POSTROUTING -o ge00 -m set --match-set egress-ipv4 dst -j REJECT --reject-with icmp-host-unreachable
+ip6tables -I POSTROUTING -o ge00 -m set --match-set egress-ipv6 dst -j REJECT --reject-with addr-unreach
+
+# Silently drop external malfeasance
+
+iptables -I INPUT -i ge00 -m set --match-set bcp38-ipv4 src -j DROP
+ip6tables -I INPUT -i ge00 -m set --match-set bcp38-ipv6 src -j DROP
+
