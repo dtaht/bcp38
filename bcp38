@@ -9,7 +9,7 @@ ipset add bcp38-ipv4 192.168.0.0/16
 ipset add bcp38-ipv4 10.0.0.0/8
 ipset add bcp38-ipv4 172.16.0.0/12
 ipset add bcp38-ipv4 0.0.0.0/8	     # RFC 1700
-ipset add bcp38-ipv4 240.0.0.0/4     # RFC 5745
+ipset add bcp38-ipv4 240.0.0.0/4     # RFC 5745 - FIXME not all mcast is bad
 ipset add bcp38-ipv4 192.0.2.0/24    # RFC 5737
 ipset add bcp38-ipv4 198.51.100.0/24 # RFC 5737
 ipset add bcp38-ipv4 203.0.113.0/24  # RFC 5737
@@ -19,7 +19,7 @@ ipset add bcp38-ipv4 203.0.113.0/24  # RFC 5737
 ipset create bcp38-ipv6 hash:net family inet6 timeout 0 hashsize 32
 ipset add bcp38-ipv6 2001:DB8::/32 # example ipv6 addr kill
 ipset add bcp38-ipv6 fc00::/7  # reject ula
-ipset add bcp38-ipv6 ff00::/8  # reject multicast
+ipset add bcp38-ipv6 ff00::/8  # reject multicast FIXME, not all mcast is bad
 ipset add bcp38-ipv6 fec0::/10 # reject site-local
 ipset add bcp38-ipv6 ::ffff/96 # reject v6mapped
 ipset add bcp38-ipv6 2001:10::/28 # Reject orchid (RFC 4843)
