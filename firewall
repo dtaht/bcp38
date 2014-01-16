@@ -1,0 +1,218 @@
+
+config defaults
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+	option drop_invalid '1'
+	option synflood_protect '1'
+	option synflood_rate '200/s'
+	option synflood_burst '500'
+	option tcp_ecn '1'
+
+config zone
+	option input 'ACCEPT'
+	option forward 'REJECT'
+	option output 'ACCEPT'
+	option name 'wan'
+	option masq '1'
+	option mtu_fix '1'
+	option network 'ge00'
+
+config zone
+	option input 'ACCEPT'
+	option forward 'ACCEPT'
+	option output 'ACCEPT'
+	option name 'lan'
+	option device 's+'
+
+config forwarding
+	option dest 'wan'
+	option src 'lan'
+
+config forwarding
+	option dest 'lan'
+	option src 'wan'
+
+config zone
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option name 'guest'
+	option forward 'ACCEPT'
+	option device 'gw+'
+
+config forwarding
+	option dest 'wan'
+	option src 'guest'
+
+config forwarding
+	option dest 'guest'
+	option src 'lan'
+
+config forwarding
+	option dest 'guest'
+	option src 'wan'
+
+config rule
+	option target 'ACCEPT'
+	option name 'domain'
+	option proto 'tcp udp'
+	option src '*'
+	option dest '*'
+	option dest_port '53'
+
+config rule
+	option target 'ACCEPT'
+	option name 'ntp'
+	option proto 'udp'
+	option dest '*'
+	option src '*'
+	option dest_port '123'
+
+config rule
+	option target 'ACCEPT'
+	option name 'dhcp4'
+	option family 'ipv4'
+	option proto 'udp'
+	option src '*'
+	option dest '*'
+	option dest_port '68'
+
+config rule
+	option target 'ACCEPT'
+	option name 'printers'
+	option proto 'tcp'
+	option src '*'
+	option dest '*'
+	option dest_port '631'
+
+config rule
+	option target 'ACCEPT'
+	option name 'Useful Services'
+	option proto 'tcp'
+	option src '*'
+	option dest '*'
+	option dest_port '80 443 873 993'
+
+config rule
+	option target 'ACCEPT'
+	option name 'ipv6 dfz'
+	option family 'ipv6'
+	option proto 'all'
+	option src '*'
+	option dest 'guest'
+
+config rule
+	option target 'ACCEPT'
+	option name 'icmpv6'
+	option family 'ipv6'
+	option proto 'icmp'
+	option src '*'
+	option dest '*'
+
+config rule
+	option src 'wan'
+	option proto 'tcpudp'
+	option dest_port '81 161 137 138 139 445 9091 8123'
+	option name 'blockconfig'
+	option target 'DROP'
+
+config rule
+	option name 'Allow-DHCPv6'
+	option src 'wan'
+	option proto 'udp'
+	option src_ip 'fe80::/10'
+	option src_port '547'
+	option dest_ip 'fe80::/10'
+	option dest_port '546'
+	option family 'ipv6'
+	option target 'ACCEPT'
+
+config rule
+	option src 'guest'
+	option proto 'tcpudp'
+	option dest_port '81 137 138 139 445 8123'
+	option name 'blockconfig2'
+	option target 'DROP'
+
+config ipset
+	option name 'bcp38-ipv6'
+	option match 'dest_net'
+	option family 'IPv6'
+
+config ipset
+	option name 'bcp38-ipv4'
+	option match 'dest_net'
+	option family 'ipv4'
+
+config ipset
+	option name 'bcp38-ipv4-ingress'
+	option external 'bcp38-ipv4'
+	option match 'src_net'
+
+config ipset
+	option name 'bcp38-ipv6-ingress'
+	option external 'bcp38-ipv6'
+	option match 'src_net'
+      
+config rule
+	option src 'wan'
+	option ipset 'bcp38-ipv4-ingress'
+	option family 'ipv4'
+	option name 'drop-bcp38-ipv4'
+	option target 'DROP'
+	option proto 'all'
+
+config rule
+	option src 'wan'
+	option ipset 'bcp38-ipv6-ingress'
+	option name 'drop-bcp38-ipv6'
+	option target 'DROP'
+	option family 'ipv6'
+	option proto 'all'
+
+# We want to drop packets from within our network
+# from ipv6 addresses we don't support.
+# however IPv4 is different as we just want
+# to drop packets from like 240, etc
+
+config rule
+	option dst 'wan'
+	option ipset 'bcp38-ipv4-ingress-short'
+	option family 'ipv4'
+	option name 'drop-bcp38-ipv4-short'
+	option target 'DROP'
+	option proto 'all'
+
+config rule
+	option dst 'wan'
+	option ipset 'bcp38-ipv6-ingress'
+	option name 'drop-bcp38-ipv6'
+	option target 'DROP'
+	option family 'ipv6'
+	option proto 'all'
+
+# And we can be chatty with hosts sending to
+# unknown IPs. Network unreach is better?
+# or admin prohibited
+
+config rule
+	option dst 'wan'
+	option ipset 'bcp38-ipv4'
+	option name 'reject-bcp38-ipv4'
+	option family 'ipv4'
+	option target 'REJECT'
+	option proto 'all'
+	option extra '--reject-with icmp-host-unreachable'
+
+config rule
+	option dst 'wan'
+	option name 'reject-bcp38-ipv6'
+	option ipset 'bcp38-ipv6'
+	option target 'REJECT'
+	option proto 'all'
+	option family 'ipv6'
+	option extra ' --reject-with addr-unreach'
+
+config include
+	option path '/etc/firewall.user'
+

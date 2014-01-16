@@ -1,0 +1,10 @@
+ipset create insecure-ports bitmap:port range 0:8192
+ipset add insecure-ports 81
+ipset add insecure-ports 161
+ipset add insecure-ports 8123
+ipset add insecure-ports 137
+ipset add insecure-ports 138
+ipset add insecure-ports 139
+ipset add insecure-ports 9091
+ipset add insecure-ports 445
+
