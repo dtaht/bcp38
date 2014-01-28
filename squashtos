@@ -1,0 +1,31 @@
+ipt() {
+	iptables $*
+	ip6tables $*
+}
+
+ipt -t mangle -F PREROUTING
+ipt -t mangle -F INPUT
+ipt -t mangle -F OUTPUT
+
+ipt -t mangle -I OUTPUT -m dscp ! --dscp-class CS5 -j DSCP \
+	--set-dscp-class BE # works, squashes
+
+ipt -t mangle -I OUTPUT -m dscp ! --dscp-class BE -j DSCP \
+	--set-dscp-class BE # works
+
+ipt -t mangle -I OUTPUT -m dscp ! --dscp-class AF11,CS1,BE -j DSCP \
+	--set-dscp-class BE # only matches first one
+
+# Maybe wireshark gets this before we can mangle it
+
+ipt -t mangle -I INPUT -m dscp --dscp-class CS5 -j DSCP \
+	--set-dscp-class BE
+
+#ipt -t mangle -I INPUT -m dscp --dscp-class CS5 -j DSCP \
+#	--set-dscp-class BE
+
+#ipt -t mangle -N FIX_TOS
+#ipt -t mangle -A FIX_TOS -m dscp --dscp-class CS5,BE -j ACCEPT
+#
+#ipt -t mangle -A PREROUTING -i ge00 -j FIX_TOS
+

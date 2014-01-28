@@ -1,36 +1,48 @@
 #!/bin/sh
-# IFACE passed in environment or first option in command line
+# "full" second arg
+
+# since we are living in a commonly double natted world, full bcp38
+# is now impossible. But if you are not double-natted...
+
+if [ "$1" = "full" ]
+then 
+FULL=1
+else
+FULL=0
+fi
+
 
 T="timeout 0"
 
-ipset destroy egress-ipv4
-ipset destroy egress-ipv6
+ipset create bcp38-ipv4 hash:net family ipv4
 
-ipset create bcp38-ipv4 hash:net family inet timeout 0 hashsize 16
-ipset add bcp38-ipv4 127.0.0.0/8 $T
-ipset add bcp38-ipv4 192.168.0.0/16  # RFC 1918
-ipset add bcp38-ipv4 10.0.0.0/8	     # RFC 1918
-ipset add bcp38-ipv4 172.16.0.0/12   # RFC 1918
-ipset add bcp38-ipv4 169.254.0.0/16  # RFC 3927
+ipset add bcp38-ipv4 127.0.0.0/8
 ipset add bcp38-ipv4 0.0.0.0/8	     # RFC 1700
 ipset add bcp38-ipv4 240.0.0.0/4     # RFC 5745
 ipset add bcp38-ipv4 192.0.2.0/24    # RFC 5737
 ipset add bcp38-ipv4 198.51.100.0/24 # RFC 5737
 ipset add bcp38-ipv4 203.0.113.0/24  # RFC 5737
 
-ipset create ipv4-invalid hash:net family inet timeout 0 hashsize 32
-ipset add ipv4-invalid 0.0.0.0/8       # RFC 1700
-ipset add ipv4-invalid 240.0.0.0/4     # RFC 5745 - FIXME not all mcast is bad
-ipset add ipv4-invalid 192.0.2.0/24    # RFC 5737
-ipset add ipv4-invalid 198.51.100.0/24 # RFC 5737
-ipset add ipv4-invalid 203.0.113.0/24  # RFC 5737
+if [ "$FULL" -eq 1 ]
+then
+CMD=add
+else
+CMD=del
+fi
+
+ipset $CMD bcp38-ipv4 192.168.0.0/16  # RFC 1918
+ipset $CMD bcp38-ipv4 10.0.0.0/8      # RFC 1918
+ipset $CMD bcp38-ipv4 172.16.0.0/12   # RFC 1918
+ipset $CMD bcp38-ipv4 169.254.0.0/16  # RFC 3927
+
+ipset $CMD bcp38-ipv4 172.26.0.0/21 nomatch
+ipset $CMD bcp38-ipv4 192.168.100.1/32 nomatch
 
 # What should bcp38 look like for ipv6?
 
 ipset create bcp38-ipv6 hash:net family inet6 timeout 0 hashsize 32
 ipset add bcp38-ipv6 2001:DB8::/32 # example ipv6 addr kill
 ipset add bcp38-ipv6 fc00::/7  # reject ula
-ipset add bcp38-ipv6 ff00::/8  # reject multicast FIXME, not all mcast is bad
 ipset add bcp38-ipv6 fec0::/10 # reject site-local
 ipset add bcp38-ipv6 ::ffff/96 # reject v6mapped
 ipset add bcp38-ipv6 2001:10::/28 # Reject orchid (RFC 4843)
@@ -43,13 +55,8 @@ ipset add egress-ipv4 10.0.0.0/8
 ipset add egress-ipv4 172.16.0.0/12
 ipset add egress-ipv4 169.254.0.0/16
 
-# you could then dynamically add your external ip even
-# in a double nat situation in a dhcpd callback
-
-
 # Prohibit multicast?
 
-ipset create egress-ipv6 hash:net family inet6 timeout 0 hashsize 32
 ipset add egress-ipv6 2001:DB8::/32 # Block IPv6 example address
 ipset add egress-ipv6 fc00::/7
 ipset add egress-ipv6 ff00::/8
@@ -62,14 +69,3 @@ ipset add bcp38-ipv6 3ffe::/16 # 6bone is dead
 # FIXME punch a hole for dhcpv6
 # punch a hole for babel
 # ipset add egress-ipv6 ff00::/8
-
-# Be chatty to misbehaving internal hosts
-
-iptables -I POSTROUTING -o ge00 -m set --match-set egress-ipv4 dst -j REJECT --reject-with icmp-host-unreachable
-ip6tables -I POSTROUTING -o ge00 -m set --match-set egress-ipv6 dst -j REJECT --reject-with addr-unreach
-
-# Silently drop external malfeasance
-
-iptables -I INPUT -i ge00 -m set --match-set bcp38-ipv4 src -j DROP
-ip6tables -I INPUT -i ge00 -m set --match-set bcp38-ipv6 src -j DROP
-

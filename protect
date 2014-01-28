@@ -1,0 +1,23 @@
+
+An example from the internet
+
+--- create the IPSET
+
+    /usr/sbin/ipset -N WEBAUTHIP macipmap --network 128.223.0.0/16
+
+--- delete/ADD to add an IP+MAC to the IPSET allow list
+
+    /usr/sbin/ipset -q -D WEBAUTHIP $ip
+    /usr/sbin/ipset -A WEBAUTHIP "$ip:$mac"
+
+--- the matching *IPTABLES* rule that uses the IPSET to allow
+
+    /usr/sbin/iptables -t mangle -A PREROUTING -m set --set WEBAUTHIP src -j
+ACCEPT
+    /usr/sbin/iptables -t raw -A PREROUTING -m set --set WEBAUTHIP src -j ACCEPT
+
+--- fall-through redirect unallow users to a wepage
+
+    /usr/sbin/iptables -t nat -A PREROUTING -p tcp -m tcp --dport 80 -j DNAT
+--to-destination $AUTHHOST:80
+Notes
